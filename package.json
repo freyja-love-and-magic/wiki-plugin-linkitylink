@@ -1,0 +1,30 @@
+{
+  "name": "wiki-plugin-linkitylink",
+  "version": "0.0.1",
+  "description": "Linkitylink integration plugin for federated wiki",
+  "keywords": [
+    "wiki",
+    "federated",
+    "linkitylink",
+    "planet-nine"
+  ],
+  "homepage": "https://github.com/planet-nine-app/wiki-plugin-linkitylink#readme",
+  "bugs": {
+    "url": "https://github.com/planet-nine-app/wiki-plugin-linkitylink/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/planet-nine-app/wiki-plugin-linkitylink.git"
+  },
+  "license": "MIT",
+  "author": "planetnineisaspaceship",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "node-fetch": "^2.6.1"
+  }
+}
