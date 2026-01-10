@@ -79,6 +79,7 @@ wiki --port 3001
 **Variables:**
 - `LINKITYLINK_PORT` - Port for this wiki's linkitylink instance (default: 3010)
 - `LINKITYLINK_PATH` - Path to linkitylink installation (default: `../../linkitylink` relative to plugin)
+- `ENABLE_APP_PURCHASE` - Show "Buy in App" button (default: false, set to `true` to enable)
 
 ### Base URLs (owner.json)
 

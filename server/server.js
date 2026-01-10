@@ -8,7 +8,7 @@ const { spawn } = require('child_process');
 
 // Linkitylink configuration
 const LINKITYLINK_PORT = process.env.LINKITYLINK_PORT || 3010;
-const LINKITYLINK_PATH = process.env.LINKITYLINK_PATH || path.join(__dirname, '../../../linkitylink');
+const LINKITYLINK_PATH = process.env.LINKITYLINK_PATH || path.join(__dirname, '../../linkitylink');
 
 let linkitylinkProcess = null;
 
@@ -20,25 +20,25 @@ function loadWikiConfig() {
       const ownerData = JSON.parse(fs.readFileSync(ownerPath, 'utf8'));
 
       // Extract base URLs from owner.json
-      // Default to localhost if not specified
+      // Default to dev allyabase if not specified
       return {
-        fountURL: ownerData.fountURL || 'http://localhost:3006',
-        bdoURL: ownerData.bdoURL || 'http://localhost:3003',
-        addieURL: ownerData.addieURL || 'http://localhost:3005'
+        fountURL: ownerData.fountURL || 'https://dev.fount.allyabase.com',
+        bdoURL: ownerData.bdoURL || 'https://dev.bdo.allyabase.com',
+        addieURL: ownerData.addieURL || 'https://dev.addie.allyabase.com'
       };
     }
-    console.warn('[wiki-plugin-linkitylink] No owner.json found, using localhost defaults');
+    console.warn('[wiki-plugin-linkitylink] No owner.json found, using dev allyabase defaults');
     return {
-      fountURL: 'http://localhost:3006',
-      bdoURL: 'http://localhost:3003',
-      addieURL: 'http://localhost:3005'
+      fountURL: 'https://dev.fount.allyabase.com',
+      bdoURL: 'https://dev.bdo.allyabase.com',
+      addieURL: 'https://dev.addie.allyabase.com'
     };
   } catch (err) {
     console.error('[wiki-plugin-linkitylink] Error loading wiki config:', err);
     return {
-      fountURL: 'http://localhost:3006',
-      bdoURL: 'http://localhost:3003',
-      addieURL: 'http://localhost:3005'
+      fountURL: 'https://dev.fount.allyabase.com',
+      bdoURL: 'https://dev.bdo.allyabase.com',
+      addieURL: 'https://dev.addie.allyabase.com'
     };
   }
 }
@@ -70,11 +70,11 @@ async function launchLinkitylink(wikiConfig) {
       return reject(new Error('Linkitylink directory not found'));
     }
 
-    // Check for server.js
-    const serverPath = path.join(LINKITYLINK_PATH, 'server.js');
+    // Check for linkitylink.js
+    const serverPath = path.join(LINKITYLINK_PATH, 'linkitylink.js');
     if (!fs.existsSync(serverPath)) {
-      console.error(`[wiki-plugin-linkitylink] ❌ server.js not found at ${serverPath}`);
-      return reject(new Error('Linkitylink server.js not found'));
+      console.error(`[wiki-plugin-linkitylink] ❌ linkitylink.js not found at ${serverPath}`);
+      return reject(new Error('Linkitylink linkitylink.js not found'));
     }
 
     // Set environment variables for this linkitylink instance
@@ -83,11 +83,12 @@ async function launchLinkitylink(wikiConfig) {
       PORT: LINKITYLINK_PORT.toString(),
       FOUNT_BASE_URL: wikiConfig.fountURL,
       BDO_BASE_URL: wikiConfig.bdoURL,
-      ADDIE_BASE_URL: wikiConfig.addieURL
+      ADDIE_BASE_URL: wikiConfig.addieURL,
+      ENABLE_APP_PURCHASE: process.env.ENABLE_APP_PURCHASE || 'false'
     };
 
     // Spawn linkitylink process
-    linkitylinkProcess = spawn('node', ['server.js'], {
+    linkitylinkProcess = spawn('node', ['linkitylink.js'], {
       cwd: LINKITYLINK_PATH,
       env: env,
       stdio: ['ignore', 'pipe', 'pipe']
