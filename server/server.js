@@ -46,12 +46,15 @@ function loadWikiConfig() {
 // Function to check if linkitylink is running
 async function checkLinkitylinkRunning() {
   try {
+    console.log(`[wiki-plugin-linkitylink] Health check: GET http://localhost:${LINKITYLINK_PORT}/config`);
     const response = await fetch(`http://localhost:${LINKITYLINK_PORT}/config`, {
       method: 'GET',
       timeout: 2000
     });
+    console.log(`[wiki-plugin-linkitylink] Health check response: ${response.status} ${response.statusText}`);
     return response.ok;
   } catch (err) {
+    console.error(`[wiki-plugin-linkitylink] Health check failed: ${err.message}`);
     return false;
   }
 }
@@ -87,6 +90,13 @@ async function launchLinkitylink(wikiConfig) {
       ENABLE_APP_PURCHASE: process.env.ENABLE_APP_PURCHASE || 'false'
     };
 
+    console.log('[wiki-plugin-linkitylink] Environment:');
+    console.log(`  PORT: ${env.PORT}`);
+    console.log(`  FOUNT_BASE_URL: ${env.FOUNT_BASE_URL}`);
+    console.log(`  BDO_BASE_URL: ${env.BDO_BASE_URL}`);
+    console.log(`  ADDIE_BASE_URL: ${env.ADDIE_BASE_URL}`);
+    console.log(`[wiki-plugin-linkitylink] Spawning: node linkitylink.js`);
+
     // Spawn linkitylink process
     linkitylinkProcess = spawn('node', ['linkitylink.js'], {
       cwd: LINKITYLINK_PATH,
@@ -109,7 +119,13 @@ async function launchLinkitylink(wikiConfig) {
 
     // Handle process exit
     linkitylinkProcess.on('exit', (code, signal) => {
-      console.log(`[wiki-plugin-linkitylink] Linkitylink process exited (code: ${code}, signal: ${signal})`);
+      if (code === 0) {
+        console.log(`[wiki-plugin-linkitylink] ✅ Linkitylink process exited cleanly (code: ${code})`);
+      } else if (code) {
+        console.error(`[wiki-plugin-linkitylink] ❌ Linkitylink process crashed (exit code: ${code})`);
+      } else if (signal) {
+        console.error(`[wiki-plugin-linkitylink] ❌ Linkitylink process killed by signal: ${signal}`);
+      }
       linkitylinkProcess = null;
     });
 
@@ -119,13 +135,23 @@ async function launchLinkitylink(wikiConfig) {
     });
 
     // Wait a bit for the service to start
+    console.log('[wiki-plugin-linkitylink] Waiting 3 seconds for service to start...');
     setTimeout(async () => {
       const isRunning = await checkLinkitylinkRunning();
       if (isRunning) {
         console.log('[wiki-plugin-linkitylink] ✅ Linkitylink service started successfully');
+        console.log(`[wiki-plugin-linkitylink] Service available at http://localhost:${LINKITYLINK_PORT}`);
         resolve();
       } else {
-        console.error('[wiki-plugin-linkitylink] ⚠️  Linkitylink may not have started correctly');
+        console.error('[wiki-plugin-linkitylink] ⚠️  Linkitylink did not respond to health check');
+        console.error(`[wiki-plugin-linkitylink] Attempted to connect to: http://localhost:${LINKITYLINK_PORT}/config`);
+        if (linkitylinkProcess && linkitylinkProcess.killed) {
+          console.error('[wiki-plugin-linkitylink] Process was killed or crashed');
+        } else if (!linkitylinkProcess) {
+          console.error('[wiki-plugin-linkitylink] Process is not running');
+        } else {
+          console.error('[wiki-plugin-linkitylink] Process appears to be running but not responding');
+        }
         resolve(); // Don't reject, let it try to work anyway
       }
     }, 3000);
