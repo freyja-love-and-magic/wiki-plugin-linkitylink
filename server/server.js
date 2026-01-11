@@ -273,8 +273,14 @@ async function startServer(params) {
 
     console.log('[wiki-plugin-linkitylink] Updating linkitylink to latest version...');
 
-    // Run npm install linkitylink@latest in the plugin directory
-    exec('npm install linkitylink@latest', { cwd: path.join(__dirname, '..') }, (err, stdout, stderr) => {
+    // Determine the correct directory to run npm install
+    // LINKITYLINK_PATH points to node_modules/linkitylink
+    // We need to run npm install in its grandparent directory (where package.json is)
+    const installDir = path.join(LINKITYLINK_PATH, '../..');
+    console.log(`[wiki-plugin-linkitylink] Running npm install in: ${installDir}`);
+
+    // Run npm install linkitylink@latest in the correct directory
+    exec('npm install linkitylink@latest', { cwd: installDir }, (err, stdout, stderr) => {
       if (err) {
         console.error('[wiki-plugin-linkitylink] Update failed:', stderr);
         return res.json({ success: false, error: stderr || err.message });
