@@ -30,26 +30,31 @@
   function renderVersionStatus(data) {
     const { installed, published, updateAvailable } = data;
 
-    // Determine status color
-    let statusColor, statusIcon, statusText;
+    // Plugmatic-style colors
+    const color = {
+      gray: '#ccc',
+      red: '#f55',
+      yellow: '#fb0',
+      green: '#0e0',
+    };
+
+    // Determine status color (matching plugmatic)
+    let statusColor, statusText;
     if (!installed) {
-      statusColor = '#f44336'; // red
-      statusIcon = '🔴';
+      statusColor = color.red;
       statusText = 'Not installed';
     } else if (updateAvailable) {
-      statusColor = '#ff9800'; // orange/yellow
-      statusIcon = '🟡';
+      statusColor = color.yellow;
       statusText = 'Update available';
     } else {
-      statusColor = '#4caf50'; // green
-      statusIcon = '🟢';
+      statusColor = color.green;
       statusText = 'Up to date';
     }
 
     let html = `
       <div style="border: 2px solid ${statusColor}; padding: 15px; border-radius: 8px; background-color: #fafafa;">
         <h3 style="margin-top: 0;">
-          ${statusIcon} Linkitylink Service ${statusText}
+          <span style="color: ${statusColor}; font-size: 20px;">◉</span> Linkitylink Service ${statusText}
         </h3>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
