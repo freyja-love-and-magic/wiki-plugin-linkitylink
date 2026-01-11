@@ -87,11 +87,13 @@ async function launchLinkitylink(wikiConfig) {
       FOUNT_BASE_URL: wikiConfig.fountURL,
       BDO_BASE_URL: wikiConfig.bdoURL,
       ADDIE_BASE_URL: wikiConfig.addieURL,
-      ENABLE_APP_PURCHASE: process.env.ENABLE_APP_PURCHASE || 'false'
+      ENABLE_APP_PURCHASE: process.env.ENABLE_APP_PURCHASE || 'false',
+      BASE_PATH: '/plugin/linkitylink'
     };
 
     console.log('[wiki-plugin-linkitylink] Environment:');
     console.log(`  PORT: ${env.PORT}`);
+    console.log(`  BASE_PATH: ${env.BASE_PATH}`);
     console.log(`  FOUNT_BASE_URL: ${env.FOUNT_BASE_URL}`);
     console.log(`  BDO_BASE_URL: ${env.BDO_BASE_URL}`);
     console.log(`  ADDIE_BASE_URL: ${env.ADDIE_BASE_URL}`);
