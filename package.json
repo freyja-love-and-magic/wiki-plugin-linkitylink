@@ -1,6 +1,6 @@
 {
   "name": "wiki-plugin-linkitylink",
-  "version": "0.0.10",
+  "version": "0.0.12",
   "description": "Linkitylink integration plugin for federated wiki",
   "keywords": [
     "wiki",

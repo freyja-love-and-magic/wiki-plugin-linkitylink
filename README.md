@@ -1,5 +1,9 @@
 # wiki-plugin-linkitylink
 
+> **🎉 This is the code for wiki-based federated distribution of software apps.**
+>
+> This plugin demonstrates a complete pattern for distributing and running software applications through Federated Wiki, enabling true peer-to-peer app distribution with automatic updates, version management, and zero-configuration deployment.
+
 Federated Wiki plugin that integrates Linkitylink - a privacy-first link page service.
 
 ## What This Plugin Does
@@ -12,7 +16,30 @@ This plugin integrates Linkitylink with Federated Wiki by:
 
 Each wiki gets its own linkitylink instance, enabling true forking and independent operation.
 
+## Wiki-Based Federated Distribution
+
+This plugin implements the **Service-Bundling Plugin Pattern**, which enables:
+
+- ✅ **One-Click Installation** - Install apps via plugmatic (fedwiki's plugin manager)
+- ✅ **Automatic Service Management** - Apps spawn and manage themselves
+- ✅ **Built-In Version Management** - Traffic light indicators show update status
+- ✅ **One-Click Updates** - Users can update apps without touching the command line
+- ✅ **True Forking** - Fork a wiki page, get an independent instance of the app
+- ✅ **Zero Configuration** - Works out of the box with sensible defaults
+
+**For developers:** See [CLAUDE.md](./CLAUDE.md) for the complete Service-Bundling Plugin Pattern documentation. This pattern is reusable for any fedwiki plugin that needs to integrate an external service or application.
+
 ## Installation
+
+### Via Plugmatic (Recommended)
+
+1. Open your Federated Wiki
+2. Add a `plugmatic` item to any page
+3. Add `linkitylink` to the plugin list
+4. Click the status indicator to install
+5. Done! Linkitylink is now available at `/plugin/linkitylink/`
+
+### Via npm
 
 ### 1. Install the plugin
 
