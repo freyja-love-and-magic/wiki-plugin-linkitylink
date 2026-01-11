@@ -238,7 +238,66 @@ async function startServer(params) {
     }
   });
 
-  // Proxy all linkitylink routes
+  // Version status endpoint
+  app.get('/plugin/linkitylink/version-status', async function(req, res) {
+    try {
+      const linkitylinkPackagePath = path.join(LINKITYLINK_PATH, 'package.json');
+      let installed = null;
+
+      if (fs.existsSync(linkitylinkPackagePath)) {
+        const packageData = JSON.parse(fs.readFileSync(linkitylinkPackagePath, 'utf8'));
+        installed = packageData.version;
+      }
+
+      // Fetch latest version from npm
+      const npmResponse = await fetch('https://registry.npmjs.org/linkitylink/latest');
+      const npmData = await npmResponse.json();
+      const published = npmData.version;
+
+      const updateAvailable = installed && published && installed !== published;
+
+      res.json({
+        installed,
+        published,
+        updateAvailable
+      });
+    } catch (err) {
+      console.error('[wiki-plugin-linkitylink] Error checking version:', err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Update endpoint
+  app.post('/plugin/linkitylink/update', function(req, res) {
+    const { exec } = require('child_process');
+
+    console.log('[wiki-plugin-linkitylink] Updating linkitylink to latest version...');
+
+    // Run npm install linkitylink@latest in the plugin directory
+    exec('npm install linkitylink@latest', { cwd: path.join(__dirname, '..') }, (err, stdout, stderr) => {
+      if (err) {
+        console.error('[wiki-plugin-linkitylink] Update failed:', stderr);
+        return res.json({ success: false, error: stderr || err.message });
+      }
+
+      console.log('[wiki-plugin-linkitylink] Update output:', stdout);
+
+      // Try to get the new version
+      try {
+        const linkitylinkPackagePath = path.join(LINKITYLINK_PATH, 'package.json');
+        const packageData = JSON.parse(fs.readFileSync(linkitylinkPackagePath, 'utf8'));
+        const newVersion = packageData.version;
+
+        console.log(`[wiki-plugin-linkitylink] ✅ Updated to version ${newVersion}`);
+        res.json({ success: true, version: newVersion });
+      } catch (readErr) {
+        console.log('[wiki-plugin-linkitylink] ✅ Update completed');
+        res.json({ success: true, version: 'unknown' });
+      }
+    });
+  });
+
+  // Proxy all OTHER linkitylink routes
   // Maps /plugin/linkitylink/* -> http://localhost:3010/*
   app.all('/plugin/linkitylink/*', function(req, res) {
     // Remove /plugin/linkitylink prefix
