@@ -1,6 +1,6 @@
 {
   "name": "wiki-plugin-linkitylink",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Linkitylink integration plugin for federated wiki",
   "keywords": [
     "wiki",
@@ -24,8 +24,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "linkitylink": "latest",
     "http-proxy": "^1.18.1",
+    "linkitylink": "^0.0.2",
     "node-fetch": "^2.6.1"
   }
 }

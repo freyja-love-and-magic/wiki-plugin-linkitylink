@@ -93,18 +93,18 @@ All routes are proxied from the wiki to the Linkitylink service:
 
 ```bash
 # Wiki 1
-export LINKITYLINK_PORT=3010
+export LINKITYLINK_PORT=6010
 export LINKITYLINK_PATH=/path/to/linkitylink
 wiki --port 3000
 
 # Wiki 2 (different terminal)
-export LINKITYLINK_PORT=3011
+export LINKITYLINK_PORT=6011
 export LINKITYLINK_PATH=/path/to/linkitylink-copy
 wiki --port 3001
 ```
 
 **Variables:**
-- `LINKITYLINK_PORT` - Port for this wiki's linkitylink instance (default: 3010)
+- `LINKITYLINK_PORT` - Port for this wiki's linkitylink instance (default: 6010)
 - `LINKITYLINK_PATH` - Path to linkitylink installation (default: `../../linkitylink` relative to plugin)
 - `ENABLE_APP_PURCHASE` - Show "Buy in App" button (default: false, set to `true` to enable)
 

@@ -7,8 +7,9 @@ const fetch = require('node-fetch');
 const { spawn } = require('child_process');
 
 // Linkitylink configuration
-const LINKITYLINK_PORT = process.env.LINKITYLINK_PORT || 3010;
+const LINKITYLINK_PORT = process.env.LINKITYLINK_PORT || 6010;
 const LINKITYLINK_PATH = process.env.LINKITYLINK_PATH || path.join(__dirname, '../../linkitylink');
+const LINKITYLINK_PID_FILE = path.join(__dirname, `linkitylink-${LINKITYLINK_PORT}.pid`);
 
 let linkitylinkProcess = null;
 
@@ -43,11 +44,143 @@ function loadWikiConfig() {
   }
 }
 
+// Function to kill process by PID
+function killProcessByPid(pid) {
+  try {
+    console.log(`[wiki-plugin-linkitylink] Attempting to kill process ${pid}...`);
+    process.kill(pid, 'SIGTERM');
+
+    // Wait a bit, then force kill if still running
+    setTimeout(() => {
+      try {
+        process.kill(pid, 0); // Check if still alive
+        console.log(`[wiki-plugin-linkitylink] Process ${pid} still running, sending SIGKILL...`);
+        process.kill(pid, 'SIGKILL');
+      } catch (err) {
+        // Process is dead, which is what we want
+        console.log(`[wiki-plugin-linkitylink] ✅ Process ${pid} terminated successfully`);
+      }
+    }, 2000);
+
+    return true;
+  } catch (err) {
+    if (err.code === 'ESRCH') {
+      console.log(`[wiki-plugin-linkitylink] Process ${pid} does not exist`);
+    } else {
+      console.error(`[wiki-plugin-linkitylink] Error killing process ${pid}:`, err.message);
+    }
+    return false;
+  }
+}
+
+// Function to find and kill process using a specific port
+function killProcessByPort(port) {
+  return new Promise((resolve) => {
+    const { exec } = require('child_process');
+
+    // Use lsof to find process using the port
+    exec(`lsof -ti tcp:${port}`, (err, stdout, stderr) => {
+      if (err || !stdout.trim()) {
+        console.log(`[wiki-plugin-linkitylink] No process found using port ${port}`);
+        resolve(false);
+        return;
+      }
+
+      const pid = parseInt(stdout.trim(), 10);
+      console.log(`[wiki-plugin-linkitylink] Found process ${pid} using port ${port}`);
+
+      const killed = killProcessByPid(pid);
+      resolve(killed);
+    });
+  });
+}
+
+// Function to clean up orphaned linkitylink process from previous run
+async function cleanupOrphanedProcess() {
+  console.log('[wiki-plugin-linkitylink] Checking for orphaned linkitylink process...');
+
+  // Check PID file
+  if (fs.existsSync(LINKITYLINK_PID_FILE)) {
+    try {
+      const pidString = fs.readFileSync(LINKITYLINK_PID_FILE, 'utf8').trim();
+      const pid = parseInt(pidString, 10);
+
+      console.log(`[wiki-plugin-linkitylink] Found PID file with PID ${pid}`);
+
+      // Try to kill the process
+      killProcessByPid(pid);
+
+      // Wait for process to die
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
+      // Clean up PID file
+      fs.unlinkSync(LINKITYLINK_PID_FILE);
+      console.log(`[wiki-plugin-linkitylink] Cleaned up PID file`);
+    } catch (err) {
+      console.error(`[wiki-plugin-linkitylink] Error reading PID file:`, err.message);
+    }
+  }
+
+  // Fallback: check if port is in use
+  const portInUse = await killProcessByPort(LINKITYLINK_PORT);
+  if (portInUse) {
+    console.log(`[wiki-plugin-linkitylink] Cleaned up process using port ${LINKITYLINK_PORT}`);
+    await new Promise(resolve => setTimeout(resolve, 2500));
+  }
+}
+
+// Function to write PID file
+function writePidFile(pid) {
+  try {
+    fs.writeFileSync(LINKITYLINK_PID_FILE, pid.toString(), 'utf8');
+    console.log(`[wiki-plugin-linkitylink] Wrote PID ${pid} to ${LINKITYLINK_PID_FILE}`);
+  } catch (err) {
+    console.error(`[wiki-plugin-linkitylink] Error writing PID file:`, err.message);
+  }
+}
+
+// Function to clean up PID file
+function cleanupPidFile() {
+  try {
+    if (fs.existsSync(LINKITYLINK_PID_FILE)) {
+      fs.unlinkSync(LINKITYLINK_PID_FILE);
+      console.log(`[wiki-plugin-linkitylink] Cleaned up PID file`);
+    }
+  } catch (err) {
+    console.error(`[wiki-plugin-linkitylink] Error cleaning up PID file:`, err.message);
+  }
+}
+
+// Function to gracefully shutdown linkitylink
+function shutdownLinkitylink() {
+  console.log('[wiki-plugin-linkitylink] Shutting down linkitylink service...');
+
+  if (linkitylinkProcess && !linkitylinkProcess.killed) {
+    console.log(`[wiki-plugin-linkitylink] Killing linkitylink process ${linkitylinkProcess.pid}...`);
+
+    try {
+      linkitylinkProcess.kill('SIGTERM');
+
+      // Force kill after timeout
+      setTimeout(() => {
+        if (linkitylinkProcess && !linkitylinkProcess.killed) {
+          console.log(`[wiki-plugin-linkitylink] Force killing linkitylink process...`);
+          linkitylinkProcess.kill('SIGKILL');
+        }
+      }, 2000);
+    } catch (err) {
+      console.error(`[wiki-plugin-linkitylink] Error killing linkitylink:`, err.message);
+    }
+  }
+
+  cleanupPidFile();
+}
+
 // Function to check if linkitylink is running
 async function checkLinkitylinkRunning() {
   try {
-    console.log(`[wiki-plugin-linkitylink] Health check: GET http://localhost:${LINKITYLINK_PORT}/config`);
-    const response = await fetch(`http://localhost:${LINKITYLINK_PORT}/config`, {
+    console.log(`[wiki-plugin-linkitylink] Health check: GET http://127.0.0.1:${LINKITYLINK_PORT}/config`);
+    const response = await fetch(`http://127.0.0.1:${LINKITYLINK_PORT}/config`, {
       method: 'GET',
       timeout: 2000
     });
@@ -106,6 +239,9 @@ async function launchLinkitylink(wikiConfig) {
       stdio: ['ignore', 'pipe', 'pipe']
     });
 
+    // Write PID file immediately after spawning
+    writePidFile(linkitylinkProcess.pid);
+
     // Log stdout
     linkitylinkProcess.stdout.on('data', (data) => {
       const lines = data.toString().split('\n').filter(line => line.trim());
@@ -128,6 +264,9 @@ async function launchLinkitylink(wikiConfig) {
       } else if (signal) {
         console.error(`[wiki-plugin-linkitylink] ❌ Linkitylink process killed by signal: ${signal}`);
       }
+
+      // Clean up PID file when process exits
+      cleanupPidFile();
       linkitylinkProcess = null;
     });
 
@@ -142,11 +281,11 @@ async function launchLinkitylink(wikiConfig) {
       const isRunning = await checkLinkitylinkRunning();
       if (isRunning) {
         console.log('[wiki-plugin-linkitylink] ✅ Linkitylink service started successfully');
-        console.log(`[wiki-plugin-linkitylink] Service available at http://localhost:${LINKITYLINK_PORT}`);
+        console.log(`[wiki-plugin-linkitylink] Service available at http://127.0.0.1:${LINKITYLINK_PORT}`);
         resolve();
       } else {
         console.error('[wiki-plugin-linkitylink] ⚠️  Linkitylink did not respond to health check');
-        console.error(`[wiki-plugin-linkitylink] Attempted to connect to: http://localhost:${LINKITYLINK_PORT}/config`);
+        console.error(`[wiki-plugin-linkitylink] Attempted to connect to: http://127.0.0.1:${LINKITYLINK_PORT}/config`);
         if (linkitylinkProcess && linkitylinkProcess.killed) {
           console.error('[wiki-plugin-linkitylink] Process was killed or crashed');
         } else if (!linkitylinkProcess) {
@@ -163,7 +302,7 @@ async function launchLinkitylink(wikiConfig) {
 // Function to configure linkitylink with base URLs
 async function configureLinkitylink(config) {
   try {
-    const response = await fetch(`http://localhost:${LINKITYLINK_PORT}/config`, {
+    const response = await fetch(`http://127.0.0.1:${LINKITYLINK_PORT}/config`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -190,6 +329,9 @@ async function startServer(params) {
 
   console.log('🔗 wiki-plugin-linkitylink starting...');
   console.log(`📍 Linkitylink service on port ${LINKITYLINK_PORT}`);
+
+  // Clean up any orphaned linkitylink process from previous run
+  await cleanupOrphanedProcess();
 
   // Load wiki configuration
   const wikiConfig = loadWikiConfig();
@@ -306,14 +448,14 @@ async function startServer(params) {
   });
 
   // Proxy all OTHER linkitylink routes
-  // Maps /plugin/linkitylink/* -> http://localhost:3010/*
+  // Maps /plugin/linkitylink/* -> http://localhost:6010/*
   app.all('/plugin/linkitylink/*', function(req, res) {
     // Remove /plugin/linkitylink prefix
     const targetPath = req.url.replace('/plugin/linkitylink', '');
     req.url = targetPath;
 
     proxy.web(req, res, {
-      target: `http://localhost:${LINKITYLINK_PORT}`,
+      target: `http://127.0.0.1:${LINKITYLINK_PORT}`,
       changeOrigin: true
     });
   });
@@ -322,14 +464,48 @@ async function startServer(params) {
   app.all('/plugin/linkitylink', function(req, res) {
     req.url = '/';
     proxy.web(req, res, {
-      target: `http://localhost:${LINKITYLINK_PORT}`,
+      target: `http://127.0.0.1:${LINKITYLINK_PORT}`,
       changeOrigin: true
     });
   });
 
   console.log('✅ wiki-plugin-linkitylink ready!');
   console.log('📍 Routes:');
-  console.log('   /plugin/linkitylink/* -> http://localhost:' + LINKITYLINK_PORT + '/*');
+  console.log('   /plugin/linkitylink/* -> http://127.0.0.1:' + LINKITYLINK_PORT + '/*');
+
+  // Set up shutdown hooks to clean up linkitylink process
+  let isShuttingDown = false;
+
+  const handleShutdown = (signal) => {
+    if (isShuttingDown) {
+      return; // Already shutting down
+    }
+    isShuttingDown = true;
+
+    console.log(`[wiki-plugin-linkitylink] Received ${signal}, shutting down...`);
+    shutdownLinkitylink();
+
+    // Give it a moment to clean up, then exit
+    setTimeout(() => {
+      console.log('[wiki-plugin-linkitylink] Shutdown complete');
+      // Don't call process.exit() here - let the parent process handle that
+    }, 3000);
+  };
+
+  // Register shutdown handlers (only once per process)
+  if (!process.linkitylinkShutdownRegistered) {
+    process.linkitylinkShutdownRegistered = true;
+
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+    process.on('exit', () => {
+      if (!isShuttingDown) {
+        shutdownLinkitylink();
+      }
+    });
+
+    console.log('[wiki-plugin-linkitylink] Shutdown handlers registered');
+  }
 }
 
 module.exports = { startServer };
