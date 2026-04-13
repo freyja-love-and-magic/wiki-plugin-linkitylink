@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Your Linkitylink</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a0033 0%, #0a001a 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .page-header {
+            text-align: center;
+            padding: 40px 20px 20px;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251,191,36,0.4);
+            margin-bottom: 8px;
+        }
+
+        .page-header p { color: rgba(255,255,255,0.6); font-size: 1rem; }
+
+        .create-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .panel h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #a78bfa;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(167,139,250,0.2);
+        }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            background: transparent;
+            color: rgba(255,255,255,0.6);
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .tab-btn.active { background: rgba(167,139,250,0.2); border-color: #a78bfa; color: #a78bfa; }
+
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* Form elements */
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; color: rgba(255,255,255,0.6); margin-bottom: 4px; }
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: #a78bfa; }
+        input::placeholder { color: rgba(255,255,255,0.3); }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-secondary {
+            background: rgba(167,139,250,0.15);
+            border: 1px solid rgba(167,139,250,0.4);
+            color: #a78bfa;
+        }
+        .btn-secondary:hover { background: rgba(167,139,250,0.25); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 20px rgba(16,185,129,0.3);
+            margin-top: 8px;
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(16,185,129,0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Link list */
+        .link-list { margin-top: 16px; }
+        .link-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        .link-item-title { font-weight: 600; color: #10b981; }
+        .link-item-url { color: rgba(255,255,255,0.4); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+        .remove-btn {
+            background: rgba(239,68,68,0.15);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #ef4444;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+        .link-count { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-top: 8px; }
+
+        /* Layout selector */
+        .layout-cards { display: flex; flex-direction: column; gap: 12px; }
+        .layout-card {
+            padding: 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(255,255,255,0.03);
+        }
+        .layout-card:hover { border-color: rgba(167,139,250,0.4); background: rgba(167,139,250,0.05); }
+        .layout-card.selected { border-color: #a78bfa; background: rgba(167,139,250,0.1); }
+        .layout-card-name { font-weight: 600; color: #a78bfa; margin-bottom: 4px; }
+        .layout-card-desc { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+        .layout-check { float: right; font-size: 1.1rem; color: #10b981; display: none; }
+        .layout-card.selected .layout-check { display: inline; }
+
+        /* Preview */
+        .preview-area {
+            min-height: 300px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .preview-placeholder { color: rgba(255,255,255,0.3); text-align: center; font-size: 0.9rem; padding: 40px; }
+        .preview-area svg { width: 100%; height: auto; }
+
+        /* Create button */
+        .create-section { padding: 0 24px 40px; max-width: 1200px; margin: 0 auto; }
+
+        .btn-create {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #1a0033;
+            font-size: 1.1rem;
+            font-weight: 700;
+            padding: 16px 40px;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(251,191,36,0.3);
+            transition: all 0.2s;
+            display: block;
+            margin: 0 auto;
+        }
+        .btn-create:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(251,191,36,0.4); }
+        .btn-create:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Success */
+        .success-panel {
+            display: none;
+            text-align: center;
+            background: rgba(16,185,129,0.1);
+            border: 2px solid rgba(16,185,129,0.3);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 24px auto;
+        }
+        .success-panel h2 { color: #10b981; margin-bottom: 16px; }
+        .tapestry-url {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #fbbf24;
+            margin: 16px 0;
+            word-break: break-all;
+        }
+        .copy-btn {
+            background: rgba(251,191,36,0.15);
+            border: 1px solid rgba(251,191,36,0.4);
+            color: #fbbf24;
+            padding: 8px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 900px) {
+            .create-layout { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <h1>✨ Create Your Linkitylink</h1>
+        <p>Weave a beautiful, shareable link tapestry — privacy-first, no tracking</p>
+    </div>
+
+    <div class="create-layout">
+
+        <!-- Links panel -->
+        <div class="panel">
+            <h2>Your Links</h2>
+
+            <div class="form-group">
+                <label>Page Title</label>
+                <input type="text" id="page-title" placeholder="My Links">
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('import')">Import</button>
+                <button class="tab-btn" onclick="switchTab('manual')">Add Manually</button>
+            </div>
+
+            <div class="tab-pane active" id="tab-import">
+                <div class="form-group">
+                    <label for="import-url">Linktree URL</label>
+                    <input type="url" id="import-url" placeholder="https://linktr.ee/username">
+                </div>
+                <button class="btn btn-secondary" onclick="importLinks(this)">Import Links</button>
+            </div>
+
+            <div class="tab-pane" id="tab-manual">
+                <div class="form-group">
+                    <label for="link-title">Title</label>
+                    <input type="text" id="link-title" placeholder="GitHub">
+                </div>
+                <div class="form-group">
+                    <label for="link-url">URL</label>
+                    <input type="url" id="link-url" placeholder="https://github.com/username">
+                </div>
+                <button class="btn btn-secondary" onclick="addLink()">Add Link</button>
+            </div>
+
+            <div class="link-list" id="link-list"></div>
+            <div class="link-count" id="link-count"></div>
+        </div>
+
+        <!-- Preview panel -->
+        <div class="panel">
+            <h2>Preview</h2>
+            <div class="preview-area" id="preview-area">
+                <div class="preview-placeholder">Add links to see a preview</div>
+            </div>
+        </div>
+
+        <!-- Layout panel -->
+        <div class="panel">
+            <h2>Choose Layout</h2>
+            <div class="layout-cards" id="layout-cards">
+                <div style="color: rgba(255,255,255,0.4); font-size:0.9rem;">Loading layouts…</div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="create-section">
+        <button class="btn-create" id="create-btn" onclick="createTapestry(this)">
+            ✨ Create My Tapestry
+        </button>
+    </div>
+
+    <!-- Success panel -->
+    <div class="success-panel" id="success-panel">
+        <h2>🎉 Tapestry Created!</h2>
+        <p>Share your link page with this URL:</p>
+        <div class="tapestry-url" id="tapestry-url"></div>
+        <button class="copy-btn" onclick="copyUrl()">Copy URL</button>
+        &nbsp;
+        <a id="view-link" href="#" target="_blank" style="color:#10b981; margin-left:12px;">View Tapestry →</a>
+    </div>
+
+    <script>
+        // All API calls prefixed for the wiki proxy at /plugin/linkitylink/
+        const API = '/plugin/linkitylink';
+
+        let links = [];
+        let selectedLayoutId = 'compact';
+        let layouts = [];
+
+        // ── Init ──────────────────────────────────────────────────────────────
+
+        async function init() {
+            await loadLayouts();
+            renderLinkList();
+        }
+
+        async function loadLayouts() {
+            try {
+                const res = await fetch(API + '/layouts');
+                layouts = await res.json();
+            } catch {
+                layouts = [
+                    { id: 'compact', name: 'Compact', description: 'Single column, bold glowing cards.' },
+                    { id: 'grid',    name: 'Grid',    description: 'Two-column grid.' },
+                    { id: 'dense',   name: 'Dense',   description: 'Three-column compact layout.' }
+                ];
+            }
+            renderLayoutCards();
+        }
+
+        function renderLayoutCards() {
+            const container = document.getElementById('layout-cards');
+            container.innerHTML = layouts.map(layout => `
+                <div class="layout-card ${layout.id === selectedLayoutId ? 'selected' : ''}"
+                     onclick="selectLayout('${layout.id}')">
+                    <span class="layout-check">✓</span>
+                    <div class="layout-card-name">${layout.name}</div>
+                    <div class="layout-card-desc">${layout.description}</div>
+                </div>
+            `).join('');
+        }
+
+        function selectLayout(id) {
+            selectedLayoutId = id;
+            renderLayoutCards();
+        }
+
+        // ── Tabs ──────────────────────────────────────────────────────────────
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', (tab === 'import' && i === 0) || (tab === 'manual' && i === 1));
+            });
+            document.getElementById('tab-import').classList.toggle('active', tab === 'import');
+            document.getElementById('tab-manual').classList.toggle('active', tab === 'manual');
+        }
+
+        // ── Link management ───────────────────────────────────────────────────
+
+        async function importLinks(btn) {
+            const url = document.getElementById('import-url').value.trim();
+            if (!url) return alert('Please enter a Linktree URL');
+
+            btn.textContent = 'Importing…';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(API + '/parse-linktree', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    links.push(...data.links);
+                    renderLinkList();
+                    document.getElementById('import-url').value = '';
+                    alert(`Imported ${data.links.length} links from @${data.username}`);
+                } else {
+                    alert(data.error);
+                }
+            } catch {
+                alert('Failed to import links');
+            }
+
+            btn.textContent = 'Import Links';
+            btn.disabled = false;
+        }
+
+        function addLink() {
+            const title = document.getElementById('link-title').value.trim();
+            const url   = document.getElementById('link-url').value.trim();
+            if (!title || !url) return alert('Please enter both title and URL');
+            links.push({ title, url });
+            renderLinkList();
+            document.getElementById('link-title').value = '';
+            document.getElementById('link-url').value = '';
+        }
+
+        function removeLink(index) {
+            links.splice(index, 1);
+            renderLinkList();
+        }
+
+        function renderLinkList() {
+            const container = document.getElementById('link-list');
+            const count     = document.getElementById('link-count');
+            const regularLinks = links.filter(l => !l.isSocial);
+
+            if (links.length === 0) {
+                container.innerHTML = '<p style="color:rgba(255,255,255,0.3);text-align:center;padding:20px;font-size:0.9rem;">No links yet</p>';
+                count.textContent = '';
+            } else {
+                container.innerHTML = links.map((link, i) => `
+                    <div class="link-item">
+                        <div>
+                            <div class="link-item-title">${esc(link.title)}</div>
+                            <div class="link-item-url">${esc(link.url)}</div>
+                        </div>
+                        <button class="remove-btn" onclick="removeLink(${i})">✕</button>
+                    </div>
+                `).join('');
+                count.textContent = `${regularLinks.length} link${regularLinks.length !== 1 ? 's' : ''}`;
+            }
+
+            updatePreview();
+        }
+
+        // ── Preview ───────────────────────────────────────────────────────────
+
+        function updatePreview() {
+            const area = document.getElementById('preview-area');
+            if (links.length === 0) {
+                area.innerHTML = '<div class="preview-placeholder">Add links to see a preview</div>';
+                return;
+            }
+
+            const regularLinks = links.filter(l => !l.isSocial).slice(0, 5);
+            const height = Math.max(200, regularLinks.length * 60 + 60);
+            const gradients = ['#10b981','#3b82f6','#8b5cf6','#ec4899','#fbbf24'];
+
+            const cards = regularLinks.map((link, i) => {
+                const color = gradients[i % gradients.length];
+                const title = esc(link.title.length > 20 ? link.title.slice(0, 20) + '…' : link.title);
+                const y = 40 + i * 55;
+                return `
+                    <rect x="20" y="${y}" width="260" height="42" rx="8" fill="${color}" opacity="0.15"/>
+                    <rect x="20" y="${y}" width="260" height="42" rx="8" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
+                    <text x="36" y="${y + 26}" fill="${color}" font-size="13" font-weight="600" font-family="system-ui">${title}</text>`;
+            }).join('');
+
+            area.innerHTML = `<svg viewBox="0 0 300 ${height}" xmlns="http://www.w3.org/2000/svg" style="width:100%;background:#1a0033;border-radius:12px;">
+                <text x="150" y="24" fill="#fbbf24" font-size="14" font-weight="bold" text-anchor="middle" font-family="system-ui">✨ My Links ✨</text>
+                ${cards}
+                ${links.length > 5 ? `<text x="150" y="${height - 10}" fill="rgba(255,255,255,0.3)" font-size="11" text-anchor="middle" font-family="system-ui">+ ${links.length - 5} more</text>` : ''}
+            </svg>`;
+        }
+
+        // ── Create ────────────────────────────────────────────────────────────
+
+        async function createTapestry(btn) {
+            if (links.length === 0) return alert('Please add at least one link');
+
+            btn.textContent = 'Creating…';
+            btn.disabled = true;
+
+            try {
+                const title = document.getElementById('page-title').value.trim() || 'My Links';
+                const res = await fetch(API + '/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, links, layoutId: selectedLayoutId })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const viewUrl = window.location.origin + API + '/view/' + data.tapestryId;
+                    document.getElementById('tapestry-url').textContent = viewUrl;
+                    document.getElementById('view-link').href = viewUrl;
+                    document.getElementById('success-panel').style.display = 'block';
+                    document.getElementById('success-panel').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Error creating tapestry: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Failed to create tapestry: ' + err.message);
+            }
+
+            btn.textContent = '✨ Create My Tapestry';
+            btn.disabled = false;
+        }
+
+        function copyUrl() {
+            const url = document.getElementById('tapestry-url').textContent;
+            navigator.clipboard.writeText(url).then(() => alert('URL copied to clipboard!'));
+        }
+
+        // ── Helpers ───────────────────────────────────────────────────────────
+
+        function esc(str) {
+            return String(str)
+                .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+        }
+
+        init();
+    </script>
+</body>
+</html>

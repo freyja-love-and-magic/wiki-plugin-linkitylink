@@ -24,8 +24,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "adm-zip": "^0.5.10",
     "http-proxy": "^1.18.1",
     "linkitylink": "^0.0.2",
-    "node-fetch": "^2.6.1"
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^2.6.1",
+    "sessionless-node": "latest"
   }
 }

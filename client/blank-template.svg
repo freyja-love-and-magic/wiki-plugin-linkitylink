@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 400 430" width="400" height="430">
+  <!--
+    LINKITYLINK TAPESTRY TEMPLATE
+    ══════════════════════════════════════════════════════════════════
+    ADDING OR REMOVING LINK ROWS
+      Each row occupies 64px of height (52px rect + 12px gap).
+      Row N starts at y = 78 + (N - 1) * 64
+
+        Row 1 → y = 78
+        Row 2 → y = 142
+        Row 3 → y = 206
+        Row 4 → y = 270
+        Row 5 → y = 334
+        Row 6 → y = 398
+        … and so on
+
+      When you add or remove rows, also update the viewBox height:
+        viewBox height = 78 + (number_of_rows * 64) + 40
+
+      Example — 4 rows: viewBox="0 0 400 430"  (78 + 4*64 + 40 = 374... round up)
+      Example — 6 rows: viewBox="0 0 400 558"  (78 + 6*64 + 40 = 502... + title area)
+      Example — 10 rows: viewBox="0 0 400 814" (78 + 10*64 + 40 = 758)
+
+    MUSTACHE VARIABLES (do not rename these)
+      {{tapestry_title}}    — set by the customer
+      {{link_N_title}}      — link display text  (N starts at 1)
+      {{link_N_url}}        — link href          (N starts at 1)
+
+    CUSTOMIZING
+      - Edit fill colors, fonts, stroke colors anywhere you like
+      - Replace the background rect with an image using <image href="..."/>
+      - Add decorative elements between the BACKGROUND and FOREGROUND comments
+      - Keep the <a> blocks intact so links remain clickable
+  -->
+
+  <!-- ══════════════════════════════════════════════════════════════
+       BACKGROUND LAYER
+       ══════════════════════════════════════════════════════════════ -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0033;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#0a001a;stop-opacity:1"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="430" fill="url(#bg-gradient)"/>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       FOREGROUND LAYER
+       ══════════════════════════════════════════════════════════════ -->
+
+  <!-- Title — y=52 is the text baseline; sits in the 78px space above the first row -->
+  <text x="200" y="52" text-anchor="middle"
+        fill="#c89aff" font-family="sans-serif" font-size="22" font-weight="bold"
+        letter-spacing="1">{{tapestry_title}}</text>
+
+  <line x1="40" y1="65" x2="360" y2="65" stroke="rgba(180,100,255,0.3)" stroke-width="1"/>
+
+  <!-- Row 1  (y = 78 + 0*64 = 78) -->
+  <a xlink:href="{{link_1_url}}" target="_blank">
+    <rect x="20" y="78" width="360" height="52" rx="8"
+          fill="rgba(120,60,200,0.18)" stroke="rgba(180,100,255,0.28)" stroke-width="1"/>
+    <text x="200" y="111" text-anchor="middle"
+          fill="#e0d0ff" font-family="sans-serif" font-size="15">{{link_1_title}}</text>
+  </a>
+
+  <!-- Row 2  (y = 78 + 1*64 = 142) -->
+  <a xlink:href="{{link_2_url}}" target="_blank">
+    <rect x="20" y="142" width="360" height="52" rx="8"
+          fill="rgba(120,60,200,0.18)" stroke="rgba(180,100,255,0.28)" stroke-width="1"/>
+    <text x="200" y="175" text-anchor="middle"
+          fill="#e0d0ff" font-family="sans-serif" font-size="15">{{link_2_title}}</text>
+  </a>
+
+  <!-- Row 3  (y = 78 + 2*64 = 206) -->
+  <a xlink:href="{{link_3_url}}" target="_blank">
+    <rect x="20" y="206" width="360" height="52" rx="8"
+          fill="rgba(120,60,200,0.18)" stroke="rgba(180,100,255,0.28)" stroke-width="1"/>
+    <text x="200" y="239" text-anchor="middle"
+          fill="#e0d0ff" font-family="sans-serif" font-size="15">{{link_3_title}}</text>
+  </a>
+
+  <!-- Row 4  (y = 78 + 3*64 = 270) -->
+  <a xlink:href="{{link_4_url}}" target="_blank">
+    <rect x="20" y="270" width="360" height="52" rx="8"
+          fill="rgba(120,60,200,0.18)" stroke="rgba(180,100,255,0.28)" stroke-width="1"/>
+    <text x="200" y="303" text-anchor="middle"
+          fill="#e0d0ff" font-family="sans-serif" font-size="15">{{link_4_title}}</text>
+  </a>
+
+  <!--
+    ── TO ADD MORE ROWS ──────────────────────────────────────────────
+    Copy the block below, increment N, and update y values:
+
+    <a xlink:href="{{link_5_url}}" target="_blank">
+      <rect x="20" y="334" width="360" height="52" rx="8"
+            fill="rgba(120,60,200,0.18)" stroke="rgba(180,100,255,0.28)" stroke-width="1"/>
+      <text x="200" y="367" text-anchor="middle"
+            fill="#e0d0ff" font-family="sans-serif" font-size="15">{{link_5_title}}</text>
+    </a>
+
+    Then update viewBox height = 78 + (number_of_rows * 64) + 40
+    ─────────────────────────────────────────────────────────────────
+  -->
+
+</svg>
