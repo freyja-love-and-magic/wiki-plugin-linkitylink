@@ -1116,10 +1116,12 @@ async function startServer(params) {
       bundleTokenUsed: t.bundleTokenUsed,
       stripeOnboarded: !!t.stripeOnboarded
     }));
+    const allyabaseUrl = config.allyabaseUrl ||
+      (config.addieUrl ? config.addieUrl.replace(/\/plugin\/allyabase\/addie$/, '') : null);
     res.json({
       isOwner: isOwner(req),
       tenants: list,
-      addieUrl: config.addieUrl || null,
+      allyabaseUrl,
       serverAddieReady: !!(config.serverAddie && config.serverAddie.uuid),
       stripeOnboarded: !!config.stripeOnboarded
     });
@@ -1128,11 +1130,15 @@ async function startServer(params) {
   // Save allyabase URL + create server Addie account (owner only)
   app.post('/plugin/linkitylink/config', async function(req, res) {
     if (!isOwner(req)) return res.status(403).json({ error: 'Owner only' });
-    const { addieUrl } = req.body || {};
-    if (!addieUrl) return res.status(400).json({ error: 'addieUrl required' });
+    const { addieUrl, allyabaseUrl } = req.body || {};
+    const resolvedAddieUrl = allyabaseUrl
+      ? allyabaseUrl.replace(/\/$/, '') + '/plugin/allyabase/addie'
+      : addieUrl;
+    if (!resolvedAddieUrl) return res.status(400).json({ error: 'allyabaseUrl required' });
 
     const config = loadConfig();
-    config.addieUrl = addieUrl;
+    if (allyabaseUrl) config.allyabaseUrl = allyabaseUrl.replace(/\/$/, '');
+    config.addieUrl = resolvedAddieUrl;
 
     // Create server Addie user if not already done
     if (!config.serverAddie || !config.serverAddie.uuid) {

@@ -38,7 +38,8 @@
   }
 
   function ownerHTML(data) {
-    const { tenants, addieUrl, serverAddieReady, stripeOnboarded } = data;
+    const { tenants, allyabaseUrl, serverAddieReady, stripeOnboarded } = data;
+    const addieUrl = allyabaseUrl;
     const rows = tenants.length ? tenants.map(t => `
       <tr>
         <td style="padding:6px 8px;">${esc(t.name)}</td>
@@ -61,7 +62,7 @@
         <div style="margin-bottom:14px;">
           <label style="font-size:0.8rem;color:#a080d0;display:block;margin-bottom:4px;">Allyabase URL</label>
           <div style="display:flex;gap:6px;">
-            <input id="ll-url-input" value="${esc(addieUrl || '')}" placeholder="https://dev.allyabase.com/plugin/allyabase/addie"
+            <input id="ll-url-input" value="${esc(addieUrl || '')}" placeholder="https://dev.allyabase.com"
               style="flex:1;background:#2a0044;border:1px solid #5a3080;border-radius:4px;padding:6px 8px;color:#e0d0ff;font-size:0.8rem;">
             <button id="ll-url-btn"
               style="background:#5a3080;border:none;border-radius:4px;padding:6px 12px;color:#e0d0ff;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
@@ -170,7 +171,7 @@
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ addieUrl: url })
+      body: JSON.stringify({ allyabaseUrl: url })
     })
       .then(function(r) { return r.json(); })
       .then(function(d) {
