@@ -1048,6 +1048,11 @@ function generateFederationPage(currentId) {
 async function startServer(params) {
   const app = params.app;
 
+  // Shadow module-level isOwner with wiki-aware version using FedWiki's securityhandler
+  function isOwner(req) {
+    return !!(app.securityhandler && app.securityhandler.isAuthorized(req));
+  }
+
   console.log('🔗 wiki-plugin-linkitylink starting...');
   console.log(`📍 Linkitylink service on port ${LINKITYLINK_PORT}`);
 
