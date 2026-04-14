@@ -109,6 +109,20 @@ async function addieGetStripeConnectUrl(addieUrl, addieKeys, addieUuid, returnUr
   return data.url || data.connectUrl || data.onboardingUrl;
 }
 
+async function addieCreatePaymentIntent(addieUrl, buyerKeys, buyerUuid, amount, payees) {
+  sessionless.getKeys = () => buyerKeys;
+  const timestamp = Date.now().toString();
+  const message = timestamp + buyerUuid + amount + 'USD';
+  const signature = await sessionless.sign(message);
+  const resp = await fetch(`${addieUrl}/user/${buyerUuid}/processor/stripe/intent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timestamp, amount, currency: 'USD', payees, signature })
+  });
+  if (!resp.ok) throw new Error(`Addie intent failed: ${resp.status}`);
+  return resp.json();
+}
+
 function generateTenantKeys() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'secp256k1' });
   return {
@@ -210,6 +224,7 @@ function customerCreatePageHTML(tenant, slots) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create your tapestry — ${escapeHtml(tenant.name)}</title>
+  <script src="https://js.stripe.com/v3/"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -217,22 +232,17 @@ function customerCreatePageHTML(tenant, slots) {
       background: linear-gradient(135deg, #1a0033 0%, #0a001a 100%);
       color: #e0d0ff;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-      display: flex;
-      gap: 2rem;
-      padding: 2rem;
-      align-items: flex-start;
-      justify-content: center;
+      display: flex; gap: 2rem; padding: 2rem;
+      align-items: flex-start; justify-content: center;
     }
     @media (max-width: 700px) { body { flex-direction: column; padding: 1rem; } }
     .preview { flex: 0 0 300px; }
     .preview svg { width: 100%; height: auto; display: block; border-radius: 12px; }
     .panel {
-      flex: 1;
-      max-width: 420px;
+      flex: 1; max-width: 420px;
       background: rgba(30, 0, 50, 0.6);
       border: 1px solid rgba(180, 100, 255, 0.2);
-      border-radius: 12px;
-      padding: 1.5rem;
+      border-radius: 12px; padding: 1.5rem;
     }
     h1 { font-size: 1.25rem; color: #c89aff; margin-bottom: 0.5rem; }
     .sub { font-size: 0.8rem; color: #7060a0; margin-bottom: 1.5rem; }
@@ -244,24 +254,27 @@ function customerCreatePageHTML(tenant, slots) {
       color: #e0d0ff; font-size: 0.875rem;
     }
     .inp:focus { outline: none; border-color: #9060d0; }
-    .link-row {
-      display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
-    }
-    .link-num {
-      flex: 0 0 20px; text-align: right; font-size: 0.75rem; color: #7060a0;
-    }
+    .link-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+    .link-num { flex: 0 0 20px; text-align: right; font-size: 0.75rem; color: #7060a0; }
     .inp-title { flex: 1.2; }
     .inp-url { flex: 2; }
-    .links-label {
-      font-size: 0.8rem; color: #a080d0; margin-bottom: 8px; margin-top: 1.25rem; display: block;
-    }
+    .links-label { font-size: 0.8rem; color: #a080d0; margin-bottom: 8px; margin-top: 1.25rem; display: block; }
     .btn {
-      width: 100%; margin-top: 1.25rem;
-      padding: 12px; background: #7c3aed; border: none; border-radius: 8px;
+      width: 100%; margin-top: 1.25rem; padding: 12px;
+      background: #7c3aed; border: none; border-radius: 8px;
       color: white; font-size: 1rem; cursor: pointer; font-weight: 600;
     }
     .btn:hover { background: #9060f0; }
-    #result { margin-top: 1rem; font-size: 0.875rem; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    #payment-section { display: none; }
+    #payment-element { margin: 1rem 0; }
+    .price-badge {
+      display: inline-block; background: rgba(124,58,237,.2);
+      border: 1px solid rgba(180,100,255,.3); border-radius: 6px;
+      padding: 4px 10px; font-size: 0.85rem; color: #c89aff; margin-bottom: 1rem;
+    }
+    #status { margin-top: 1rem; font-size: 0.875rem; min-height: 1.2em; }
+    .err { color: #f55; } .ok { color: #0e0; }
   </style>
 </head>
 <body>
@@ -269,24 +282,46 @@ function customerCreatePageHTML(tenant, slots) {
   <div class="panel">
     <h1>Create your tapestry</h1>
     <p class="sub">Template by ${escapeHtml(tenant.name)}</p>
+    <div class="price-badge">$20.00</div>
 
-    <div class="field">
-      <label>Your name or title</label>
-      <input id="tapestry-title" class="inp" placeholder="e.g. Alice's Links">
+    <div id="form-section">
+      <div class="field">
+        <label>Your name or title</label>
+        <input id="tapestry-title" class="inp" placeholder="e.g. Alice's Links">
+      </div>
+      <span class="links-label">Your links (${slots} slots)</span>
+      <div id="link-fields">${linkFields}</div>
+      <button class="btn" id="continue-btn">Continue to payment →</button>
     </div>
 
-    <span class="links-label">Your links (${slots} slots)</span>
-    <div id="link-fields">${linkFields}</div>
+    <div id="payment-section">
+      <div style="font-size:.85rem;color:#a080d0;margin-bottom:.75rem;">Complete payment to create your tapestry</div>
+      <div id="payment-element"></div>
+      <button class="btn" id="pay-btn">Pay $20.00</button>
+    </div>
 
-    <button class="btn" id="create-btn">Create tapestry →</button>
-    <div id="result"></div>
+    <div id="status"></div>
   </div>
 
   <script>
   (function() {
     var slug = ${JSON.stringify(tenant.slug)};
     var slots = ${slots};
-    document.getElementById('create-btn').addEventListener('click', function() {
+    var stripe, elements, pendingTitle, pendingLinks;
+
+    // Read window.params payees from URL query string
+    var searchParams = new URLSearchParams(window.location.search);
+    var clientPayees = [];
+    var payeeKey = searchParams.get('payee');
+    var payeeAmt = parseInt(searchParams.get('payeeAmount') || '0');
+    if (payeeKey && payeeAmt > 0) clientPayees.push({ pubKey: payeeKey, amount: payeeAmt });
+
+    function setStatus(html, cls) {
+      var el = document.getElementById('status');
+      el.innerHTML = '<span class="' + (cls||'') + '">' + html + '</span>';
+    }
+
+    document.getElementById('continue-btn').addEventListener('click', function() {
       var title = document.getElementById('tapestry-title').value.trim();
       var links = [];
       for (var i = 1; i <= slots; i++) {
@@ -294,22 +329,58 @@ function customerCreatePageHTML(tenant, slots) {
         var u = document.querySelector('[name="url_' + i + '"]').value.trim();
         if (t && u) links.push({ title: t, url: u });
       }
-      if (!links.length) { document.getElementById('result').textContent = 'Add at least one link.'; return; }
-      document.getElementById('result').textContent = 'Creating…';
-      fetch('/plugin/linkitylink/' + slug + '/create', {
+      if (!links.length) { setStatus('Add at least one link.', 'err'); return; }
+      pendingTitle = title;
+      pendingLinks = links;
+
+      var btn = document.getElementById('continue-btn');
+      btn.disabled = true; btn.textContent = 'Setting up payment…';
+
+      fetch('/plugin/linkitylink/' + slug + '/purchase/intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: title, links: links })
+        body: JSON.stringify({ clientPayees: clientPayees })
       })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.error) { document.getElementById('result').textContent = 'Error: ' + d.error; return; }
-        var url = window.location.origin + d.url;
-        document.getElementById('result').innerHTML =
-          '<strong style="color:#0e0">✅ Tapestry created!</strong><br>' +
-          'Your link: <a href="' + url + '" target="_blank" style="color:#c89aff;">' + url + '</a>';
+        if (d.error) { setStatus(d.error, 'err'); btn.disabled = false; btn.textContent = 'Continue to payment →'; return; }
+        stripe = Stripe(d.publishableKey);
+        elements = stripe.elements({ clientSecret: d.clientSecret });
+        var paymentEl = elements.create('payment');
+        paymentEl.mount('#payment-element');
+        document.getElementById('form-section').style.display = 'none';
+        document.getElementById('payment-section').style.display = 'block';
       })
-      .catch(function(e) { document.getElementById('result').textContent = 'Error: ' + e.message; });
+      .catch(function(e) { setStatus(e.message, 'err'); btn.disabled = false; btn.textContent = 'Continue to payment →'; });
+    });
+
+    document.getElementById('pay-btn').addEventListener('click', async function() {
+      var payBtn = document.getElementById('pay-btn');
+      payBtn.disabled = true; payBtn.textContent = 'Processing…';
+      var result = await stripe.confirmPayment({
+        elements,
+        confirmParams: { return_url: window.location.href },
+        redirect: 'if_required'
+      });
+      if (result.error) {
+        setStatus(result.error.message, 'err');
+        payBtn.disabled = false; payBtn.textContent = 'Pay $20.00';
+        return;
+      }
+      var piId = result.paymentIntent && result.paymentIntent.id;
+      fetch('/plugin/linkitylink/' + slug + '/purchase/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentIntentId: piId, title: pendingTitle, links: pendingLinks })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.error) { setStatus(d.error, 'err'); payBtn.disabled = false; payBtn.textContent = 'Pay $20.00'; return; }
+        var url = window.location.origin + d.url;
+        document.getElementById('payment-section').style.display = 'none';
+        setStatus('✅ Tapestry created! Your link: <a href="' + url + '" target="_blank" style="color:#c89aff;">' + url + '</a>', 'ok');
+      })
+      .catch(function(e) { setStatus(e.message, 'err'); payBtn.disabled = false; payBtn.textContent = 'Pay $20.00'; });
     });
   })();
   </script>
@@ -1345,21 +1416,83 @@ h1{color:#0e0;font-size:1.5rem;margin-bottom:.75rem;}p{color:#a080d0;font-size:.
     res.send(customerCreatePageHTML(tenant, slots));
   });
 
-  // Customer tapestry creation — mustache render + store
-  app.post('/plugin/linkitylink/:slug/create', function(req, res) {
+  const ll_json = require('express').json({ limit: '64kb' });
+  const TAPESTRY_PRICE = 2000; // $20 in cents
+
+  // Step 1: Create Stripe payment intent for tapestry purchase
+  app.post('/plugin/linkitylink/:slug/purchase/intent', ll_json, async function(req, res) {
+    const { slug } = req.params;
+    const tenants = loadTenants();
+    const tenant = Object.values(tenants).find(t => t.slug === slug);
+    if (!tenant || !tenant.template) return res.status(404).json({ error: 'Template not found' });
+    if (!tenant.addieKeys) return res.status(503).json({ error: 'Tenant has not set up payments' });
+
+    const config = loadConfig();
+    const addieUrl = config.addieUrl;
+    if (!addieUrl) return res.status(503).json({ error: 'Allyabase not configured' });
+
+    const { clientPayees = [] } = req.body || {};
+
+    try {
+      // Create a fresh buyer Addie account
+      const buyerKeys = await generateAddieKeys();
+      const buyerUser = await addieCreateUser(addieUrl, buyerKeys);
+      if (buyerUser.error) return res.status(502).json({ error: 'Could not create buyer account' });
+
+      // Build payees — tenant starts with full amount
+      let payees = [{ pubKey: tenant.addieKeys.pubKey, amount: TAPESTRY_PRICE }];
+
+      // Carve server 1% from tenant's share
+      if (config.serverAddie && config.stripeOnboarded) {
+        const serverAmount = Math.floor(TAPESTRY_PRICE * 0.01);
+        payees[0].amount -= serverAmount;
+        payees.push({ pubKey: config.serverAddie.pubKey, amount: serverAmount });
+      }
+
+      // Add URL-param payees (capped at 5% each), carved from tenant's share
+      const maxPayeeAmount = Math.floor(TAPESTRY_PRICE * 0.05);
+      for (const p of clientPayees) {
+        if (!p.pubKey) continue;
+        const pAmount = Math.min(parseInt(p.amount) || 0, maxPayeeAmount);
+        if (pAmount <= 0) continue;
+        const tenantIdx = payees.findIndex(x => x.pubKey === tenant.addieKeys.pubKey);
+        if (tenantIdx >= 0 && payees[tenantIdx].amount - pAmount > 0) {
+          payees[tenantIdx].amount -= pAmount;
+          payees.push({ pubKey: p.pubKey, amount: pAmount });
+        }
+      }
+
+      const intentData = await addieCreatePaymentIntent(addieUrl, buyerKeys, buyerUser.uuid, TAPESTRY_PRICE, payees);
+      if (!intentData.clientSecret) return res.status(502).json({ error: 'Could not create payment intent' });
+
+      res.json({ clientSecret: intentData.clientSecret, publishableKey: intentData.publishableKey });
+    } catch (err) {
+      console.error('[linkitylink] purchase/intent error:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Step 2: Payment confirmed — store tapestry + trigger transfers
+  app.post('/plugin/linkitylink/:slug/purchase/complete', ll_json, async function(req, res) {
     const { slug } = req.params;
     const tenants = loadTenants();
     const tenant = Object.values(tenants).find(t => t.slug === slug);
     if (!tenant || !tenant.template) return res.status(404).json({ error: 'Template not found' });
 
-    const { title, links } = req.body || {};
-    if (!Array.isArray(links) || !links.length) {
-      return res.status(400).json({ error: 'links array required' });
+    const { paymentIntentId, title, links } = req.body || {};
+    if (!paymentIntentId) return res.status(400).json({ error: 'paymentIntentId required' });
+    if (!Array.isArray(links) || !links.length) return res.status(400).json({ error: 'links required' });
+
+    const config = loadConfig();
+    // Fire-and-forget transfer trigger
+    if (config.addieUrl) {
+      fetch(`${config.addieUrl}/payment/${paymentIntentId}/process-transfers`, { method: 'POST' })
+        .catch(err => console.warn('[linkitylink] process-transfers error:', err.message));
     }
 
     const tapestryId = crypto.randomUUID();
     const tapestries = loadTapestries();
-    tapestries[tapestryId] = { tenantUuid: tenant.uuid, title: title || slug, links };
+    tapestries[tapestryId] = { tenantUuid: tenant.uuid, title: title || slug, links, paidAt: Date.now() };
     saveTapestries(tapestries);
 
     res.json({ tapestryId, url: `/plugin/linkitylink/view/${tapestryId}` });
