@@ -96,18 +96,21 @@ async function addieCreateUser(addieUrl, addieKeys) {
   return resp.json();
 }
 
-async function addieGetStripeConnectUrl(addieUrl, addieKeys, addieUuid, returnUrl) {
+async function addieGetStripeConnectUrl(addieUrl, addieKeys, addieUuid, returnUrl, host) {
   sessionless.getKeys = () => addieKeys;
   const timestamp = Date.now().toString();
-  const message = timestamp + addieUuid;
+  const email = `linkitylink@${(host || 'wiki').replace(/:\d+$/, '')}`;
+  const message = timestamp + addieUuid + email;
   const signature = await sessionless.sign(message);
-  const resp = await fetch(
-    `${addieUrl}/user/${addieUuid}/processor/stripe/connect?timestamp=${timestamp}&signature=${signature}&returnUrl=${encodeURIComponent(returnUrl)}`,
-    { headers: { 'Content-Type': 'application/json' } }
-  );
+  const resp = await fetch(`${addieUrl}/user/${addieUuid}/processor/stripe/express`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timestamp, country: 'US', email, refreshUrl: returnUrl, returnUrl, signature }),
+    timeout: 10000
+  });
   if (!resp.ok) throw new Error(`Addie Stripe connect failed: ${resp.status}`);
   const data = await resp.json();
-  return data.url || data.connectUrl || data.onboardingUrl;
+  return data.stripeOnboardingUrl || data.url || data.connectUrl || data.onboardingUrl;
 }
 
 async function addieCreatePaymentIntent(addieUrl, buyerKeys, buyerUuid, amount, payees) {
@@ -1267,7 +1270,7 @@ async function startServer(params) {
     try {
       const returnUrl = `${req.protocol}://${req.get('host')}/plugin/linkitylink/setup/stripe/return`;
       const connectUrl = await addieGetStripeConnectUrl(
-        addieUrl, config.serverAddie, config.serverAddie.uuid, returnUrl
+        addieUrl, config.serverAddie, config.serverAddie.uuid, returnUrl, req.get('host')
       );
       if (!connectUrl) return res.status(502).send('Addie did not return a Stripe Connect URL');
       res.redirect(connectUrl);
