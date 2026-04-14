@@ -1242,12 +1242,25 @@ async function startServer(params) {
   // Owner Stripe Connect onboarding (session-authenticated — no signed URL needed)
   app.get('/plugin/linkitylink/setup/stripe', async function(req, res) {
     if (!isOwner(req)) return res.status(403).send('Owner only');
-    const config = loadConfig();
+    let config = loadConfig();
+    const addieUrl = config.addieUrl || getAddieUrl(wikiConfig);
+
+    // Create server Addie user on-demand if URL is configured but user wasn't created yet
+    if ((!config.serverAddie || !config.serverAddie.uuid) && addieUrl) {
+      try {
+        const serverAddieKeys = await generateAddieKeys();
+        const addieUser = await addieCreateUser(addieUrl, serverAddieKeys);
+        config.serverAddie = { uuid: addieUser.uuid, ...serverAddieKeys };
+        saveConfig(config);
+      } catch (err) {
+        return res.status(503).send('Could not create Addie account — is your allyabase URL correct? Error: ' + err.message);
+      }
+    }
+
     if (!config.serverAddie || !config.serverAddie.uuid) {
       return res.status(503).send('Save your allyabase URL first to set up a server Addie account');
     }
     try {
-      const addieUrl  = config.addieUrl || getAddieUrl(wikiConfig);
       const returnUrl = `${req.protocol}://${req.get('host')}/plugin/linkitylink/setup/stripe/return`;
       const connectUrl = await addieGetStripeConnectUrl(
         addieUrl, config.serverAddie, config.serverAddie.uuid, returnUrl
