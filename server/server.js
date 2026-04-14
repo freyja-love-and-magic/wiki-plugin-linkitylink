@@ -89,7 +89,8 @@ async function addieCreateUser(addieUrl, addieKeys) {
   const resp = await fetch(`${addieUrl}/user/create`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ timestamp, pubKey: addieKeys.pubKey, signature })
+    body: JSON.stringify({ timestamp, pubKey: addieKeys.pubKey, signature }),
+    timeout: 8000
   });
   if (!resp.ok) throw new Error(`Addie create failed: ${resp.status}`);
   return resp.json();
@@ -1253,7 +1254,10 @@ async function startServer(params) {
         config.serverAddie = { uuid: addieUser.uuid, ...serverAddieKeys };
         saveConfig(config);
       } catch (err) {
-        return res.status(503).send('Could not create Addie account — is your allyabase URL correct? Error: ' + err.message);
+        return res.status(503).send(
+          `Could not create Addie account.\n\nURL tried: ${addieUrl}/user/create\nError: ${err.message}\n\n` +
+          `If the URL looks wrong, go back and update your Allyabase URL in the linkitylink owner panel.`
+        );
       }
     }
 
