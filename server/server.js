@@ -1220,7 +1220,7 @@ async function startServer(params) {
     if (!config.serverAddie || !config.serverAddie.uuid) {
       try {
         const serverAddieKeys = await generateAddieKeys();
-        const addieUser = await addieCreateUser(addieUrl, serverAddieKeys);
+        const addieUser = await addieCreateUser(resolvedAddieUrl, serverAddieKeys);
         config.serverAddie = { uuid: addieUser.uuid, ...serverAddieKeys };
         console.log(`[linkitylink] Created server Addie user ${addieUser.uuid}`);
       } catch (err) {
