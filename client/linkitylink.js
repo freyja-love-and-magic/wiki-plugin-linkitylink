@@ -28,7 +28,7 @@
   }
 
   function ownerHTML(data) {
-    const { tenants = [], allyabaseUrl = '', serverAddieReady, stripeOnboarded } = data;
+    const { tenants = [], allyabaseUrl = '', serverAddieReady, stripeOnboarded, ownerEmail = '' } = data;
     const step1Done = !!allyabaseUrl;
     const step2Done = serverAddieReady && stripeOnboarded;
 
@@ -67,14 +67,26 @@
             <a href="/plugin/linkitylink/setup/stripe" target="_blank" style="float:right;color:#10b981;font-size:0.75rem;">Update →</a>
           </div>`;
       } else {
+        const connectBtn = ownerEmail
+          ? `<a href="/plugin/linkitylink/setup/stripe" target="_blank"
+               style="display:inline-block;padding:5px 12px;background:#7c3aed;border-radius:4px;color:white;font-size:0.8rem;font-weight:600;text-decoration:none;">
+               Set up payouts →
+             </a>`
+          : `<span style="font-size:0.78rem;color:#92400e;">Save your email above to continue.</span>`;
         stripeBanner = `
           <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.35);border-radius:6px;padding:10px 12px;margin-bottom:14px;">
             <div style="font-size:0.875rem;font-weight:600;color:#fbbf24;margin-bottom:4px;">💳 Enable server payouts</div>
             <div style="font-size:0.8rem;color:#fde68a;margin-bottom:8px;">Connect Stripe so your wiki receives a 1% platform fee from tapestry purchases.</div>
-            <a href="/plugin/linkitylink/setup/stripe" target="_blank"
-              style="display:inline-block;padding:5px 12px;background:#7c3aed;border-radius:4px;color:white;font-size:0.8rem;font-weight:600;text-decoration:none;">
-              Set up payouts →
-            </a>
+            <div style="display:flex;gap:6px;margin-bottom:8px;">
+              <input id="ll-email-input" type="email" value="${esc(ownerEmail)}" placeholder="your@email.com"
+                style="flex:1;background:#1a0033;border:1px solid #92400e;border-radius:4px;padding:5px 8px;color:#fde68a;font-size:0.8rem;">
+              <button id="ll-email-btn"
+                style="background:#92400e;border:none;border-radius:4px;padding:5px 10px;color:#fde68a;cursor:pointer;font-size:0.8rem;white-space:nowrap;">
+                Save
+              </button>
+            </div>
+            <div id="ll-email-status" style="font-size:0.75rem;min-height:1em;margin-bottom:6px;"></div>
+            ${connectBtn}
           </div>`;
       }
     }
@@ -195,6 +207,32 @@
     // Save URL
     div.querySelector('#ll-url-btn').addEventListener('click', function() { saveUrl(div); });
 
+    // Save email
+    const emailBtn = div.querySelector('#ll-email-btn');
+    if (emailBtn) {
+      emailBtn.addEventListener('click', function() {
+        const input  = div.querySelector('#ll-email-input');
+        const status = div.querySelector('#ll-email-status');
+        const email  = (input.value || '').trim();
+        if (!email || !email.includes('@')) { status.innerHTML = '<span style="color:#f55;">Enter a valid email.</span>'; return; }
+        emailBtn.disabled = true; emailBtn.textContent = 'Saving…';
+        fetch('/plugin/linkitylink/config', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerEmail: email })
+        })
+          .then(r => r.json())
+          .then(d => {
+            if (d.error) { status.innerHTML = '<span style="color:#f55;">' + esc(d.error) + '</span>'; return; }
+            status.innerHTML = '<span style="color:#0e0;">✅ Saved</span>';
+            fetch('/plugin/linkitylink/config', { credentials: 'include' })
+              .then(r => r.json()).then(fresh => { if (fresh.isOwner) renderOwnerView(div, fresh); });
+          })
+          .catch(e => { status.innerHTML = '<span style="color:#f55;">' + esc(e.message) + '</span>'; })
+          .finally(() => { emailBtn.disabled = false; emailBtn.textContent = 'Save'; });
+      });
+    }
+
     // Register tenant
     const regBtn = div.querySelector('#ll-register-btn');
     if (regBtn) {
@@ -274,7 +312,8 @@
             <div style="font-size:0.78rem;color:#a0e0a0;margin-bottom:6px;">
               Send this one-time bundle URL to <strong>${esc(name)}</strong>. It expires after first download.
             </div>
-            <code style="word-break:break-all;background:#001a0a;border:1px solid #0a4020;padding:6px 8px;border-radius:4px;display:block;font-size:0.75rem;color:#6ee7b7;">${esc(bundleUrl)}</code>
+            <code id="ll-bundle-url" style="word-break:break-all;background:#001a0a;border:1px solid #0a4020;padding:6px 8px;border-radius:4px;display:block;font-size:0.75rem;color:#6ee7b7;cursor:pointer;" title="Click to copy">${esc(bundleUrl)}</code>
+            <div style="margin-top:4px;font-size:0.72rem;color:#4a8060;" id="ll-copy-hint">Click URL to copy</div>
             <div style="margin-top:8px;font-size:0.75rem;color:#7060a0;line-height:1.5;">
               Tenant workflow:<br>
               1. Download bundle → <code style="background:#1a0033;padding:1px 4px;border-radius:3px;">node linkitylink-sign.js init bundle.zip</code><br>
@@ -283,12 +322,29 @@
               4. Drag <code style="background:#1a0033;padding:1px 4px;border-radius:3px;">upload.zip</code> onto this wiki item to publish<br>
               5. Set up Stripe payouts → <code style="background:#1a0033;padding:1px 4px;border-radius:3px;">node linkitylink-sign.js payouts &lt;wiki-url&gt;</code>
             </div>
+            <button id="ll-bundle-done"
+              style="margin-top:10px;background:#7c3aed;color:#fff;border:none;border-radius:4px;padding:6px 14px;font-size:0.8rem;cursor:pointer;">
+              Done — I've saved the URL
+            </button>
           </div>`;
-        // Refresh tenant table
-        setTimeout(() => {
-          fetch('/plugin/linkitylink/config', { credentials: 'include' })
-            .then(r => r.json()).then(data => { if (data.isOwner) renderOwnerView(div, data); });
-        }, 400);
+        // Copy on click
+        const urlCode = result.querySelector('#ll-bundle-url');
+        if (urlCode) {
+          urlCode.addEventListener('click', function() {
+            navigator.clipboard.writeText(bundleUrl).then(() => {
+              const hint = result.querySelector('#ll-copy-hint');
+              if (hint) hint.textContent = '✅ Copied!';
+            });
+          });
+        }
+        // Refresh tenant table only after user confirms they've saved the URL
+        const doneBtn = result.querySelector('#ll-bundle-done');
+        if (doneBtn) {
+          doneBtn.addEventListener('click', function() {
+            fetch('/plugin/linkitylink/config', { credentials: 'include' })
+              .then(r => r.json()).then(data => { if (data.isOwner) renderOwnerView(div, data); });
+          });
+        }
       })
       .catch(e => {
         if (btn) btn.disabled = false;

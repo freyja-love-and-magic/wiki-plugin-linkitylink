@@ -1,6 +1,6 @@
 {
   "name": "wiki-plugin-linkitylink",
-  "version": "0.0.19",
+  "version": "0.0.21",
   "description": "Linkitylink integration plugin for federated wiki",
   "keywords": [
     "wiki",
@@ -25,8 +25,6 @@
   },
   "dependencies": {
     "adm-zip": "^0.5.10",
-    "http-proxy": "^1.18.1",
-    "linkitylink": "latest",
     "multer": "^1.4.5-lts.1",
     "node-fetch": "^2.6.1",
     "sessionless-node": "latest"
